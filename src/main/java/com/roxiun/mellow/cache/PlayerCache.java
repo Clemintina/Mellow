@@ -11,11 +11,12 @@ import com.roxiun.mellow.config.MellowOneConfig;
 import com.roxiun.mellow.data.PlayerProfile;
 import com.roxiun.mellow.util.ChatUtils;
 import com.roxiun.mellow.util.player.PlayerUtils;
+import net.minecraft.client.Minecraft;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import net.minecraft.client.Minecraft;
 
 public class PlayerCache {
 
@@ -29,13 +30,13 @@ public class PlayerCache {
     private final MellowOneConfig config;
 
     public PlayerCache(
-        MojangApi mojangApi,
-        StatsProvider statsProvider,
-        UrchinApi urchinApi,
-        SeraphApi seraphApi,
-        String urchinApiKey,
-        String seraphApiKey,
-        MellowOneConfig config
+            MojangApi mojangApi,
+            StatsProvider statsProvider,
+            UrchinApi urchinApi,
+            SeraphApi seraphApi,
+            String urchinApiKey,
+            String seraphApiKey,
+            MellowOneConfig config
     ) {
         this.mojangApi = mojangApi;
         this.statsProvider = statsProvider;
@@ -60,7 +61,7 @@ public class PlayerCache {
     private PlayerProfile fetchAndCachePlayer(String playerName) {
         try {
             BedwarsPlayer bedwarsPlayer = statsProvider.fetchPlayerStats(
-                playerName
+                    playerName
             );
             if (bedwarsPlayer == null) {
                 return null;
@@ -75,17 +76,17 @@ public class PlayerCache {
             if (config.urchin) {
                 try {
                     urchinTags = urchinApi.fetchUrchinTags(
-                        uuid,
-                        playerName,
-                        urchinApiKey
+                            uuid,
+                            playerName,
+                            urchinApiKey
                     );
                 } catch (IOException e) {
                     Minecraft.getMinecraft().addScheduledTask(() ->
-                        ChatUtils.sendMessage(
-                            "§cFailed to fetch Urchin tags for " +
-                                playerName +
-                                "."
-                        )
+                            ChatUtils.sendMessage(
+                                    "§cFailed to fetch Urchin tags for " +
+                                            playerName +
+                                            "."
+                            )
                     );
                 }
             }
@@ -94,23 +95,31 @@ public class PlayerCache {
             if (config.seraph) {
                 try {
                     seraphTags = seraphApi.fetchSeraphTags(uuid, seraphApiKey);
-                } catch (IOException e) {
-                    Minecraft.getMinecraft().addScheduledTask(() ->
-                        ChatUtils.sendMessage(
-                            "§cFailed to fetch Seraph tags for " +
-                                playerName +
-                                "."
-                        )
-                    );
+                } catch (IOException | IllegalArgumentException e) {
+                    if (e instanceof IllegalArgumentException) {
+                        Minecraft.getMinecraft().addScheduledTask(() ->
+                                ChatUtils.sendMessage(
+                                        "§cInvalid Seraph API key"
+                                )
+                        );
+                    } else {
+                        Minecraft.getMinecraft().addScheduledTask(() ->
+                                ChatUtils.sendMessage(
+                                        "§cFailed to fetch Seraph tags for " +
+                                                playerName +
+                                                "."
+                                )
+                        );
+                    }
                 }
             }
 
             PlayerProfile newProfile = new PlayerProfile(
-                uuid,
-                playerName,
-                bedwarsPlayer,
-                urchinTags,
-                seraphTags
+                    uuid,
+                    playerName,
+                    bedwarsPlayer,
+                    urchinTags,
+                    seraphTags
             );
             cache.put(playerName.toLowerCase(), newProfile);
             return newProfile;
